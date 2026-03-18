@@ -21,13 +21,58 @@
 //Determines what color the cell at the given row/col should be. This should not affect Image, and should allocate space for a new Color.
 Color *evaluateOnePixel(Image *image, int row, int col)
 {
-	//YOUR CODE HERE
+	Color *new_color = (Color *)malloc(sizeof(Color));
+	if (new_color == NULL) {
+		fprintf(stderr, "Memory allocation failed for new Color struct\n");
+		return NULL;
+	}
+	uint8_t blue_value = image->image[row][col].B;
+	if (blue_value & 1) {
+		new_color->R = 255;
+		new_color->G = 255;
+		new_color->B = 255;
+	} else {
+		new_color->R = 0;
+		new_color->G = 0;
+		new_color->B = 0;
+	}
+	return new_color;
 }
 
 //Given an image, creates a new image extracting the LSB of the B channel.
 Image *steganography(Image *image)
 {
-	//YOUR CODE HERE
+	Image *img = (Image *)malloc(sizeof(Image));
+	if (img == NULL) {
+		fprintf(stderr, "Memory allocation failed for Image struct\n");
+		return NULL;
+	}
+	img->rows = image->rows;
+	img->cols = image->cols;
+	img->image = (Color **)malloc(img->rows * sizeof(Color *));
+	if (img->image == NULL) {
+		fprintf(stderr, "Memory allocation failed for image rows.\n");
+		free(img);
+		return NULL;
+	}
+	for (int i = 0; i < img->rows; i++) {
+		img->image[i] = (Color *)malloc(img->cols * sizeof(Color));
+		if (img->image[i] == NULL) {
+			fprintf(stderr, "Memory allocation failed for image row %d.\n", i);
+			for (int j = 0; j < i; j++) {
+				free(img->image[j]);
+			}
+			free(img->image);
+			free(img);
+			return NULL;
+		}
+		for (int j = 0; j < img->cols; j++) {
+			Color *new_color = evaluateOnePixel(image, i, j);
+			img->image[i][j] = *new_color;
+			free(new_color);
+		}
+	}
+	return img;
 }
 
 /*
@@ -45,5 +90,25 @@ Make sure to free all memory before returning!
 */
 int main(int argc, char **argv)
 {
-	//YOUR CODE HERE
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <input.ppm>\n", argv[0]);
+		return -1;
+	}
+
+	Image *image = readData(argv[1]);
+	if (image == NULL) {
+		return -1;
+	}
+
+	Image *stego_image = steganography(image);
+	if (stego_image == NULL) {
+		freeImage(image);
+		return -1;
+	}
+
+	writeData(stego_image);
+
+	freeImage(image);
+	freeImage(stego_image);
+	return 0;
 }
